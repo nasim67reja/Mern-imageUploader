@@ -1,0 +1,89 @@
+# File Upload Using Mern-Stack
+
+Multer is a Very Popular middlewear to handle multipart form data which is a form encoding that used to upload files from a form.So basically multer is a middlewear for multipart form data and now here is what we goona do.
+we will allow the user to upload a photo on the route(updateme for jonas course)
+
+```js
+const multer = requrie("multer");
+const upload = multer({ dest: "public/img/users" }); // destination where i want to save the file
+```
+
+we also define the `const upload=multer()` with out any option inside multer but then the upload image will simply be stored in memory and not saved anywhere to the disk.
+
+- Images are not directly uploaded into the database we just upload them to our file system and
+  then in the database we put a link basically to that image
+
+## step 2
+
+what we need to do now is to use this upload here to really create a middlewear function that we can put here into the update me route or where we want to use actually
+and it's work like these `upload.single(photo)`=> beacause here we want to use only one single image
+
+and inside single we have define the name of the field that is going to hold the image to upload. in this case that will be photo. the field in the form that is going to be uploading the image
+=> here we use `upload.single(photo)` as a middlewear so the next middlewear will be called. this middlewear will taking the file and basically copying it to the destination that we specified and then after that of course it will called next middlewear in the stack which is updateMe in jonas's case. also this middlewear will put the file or at least some information about the file on the req object
+
+```js
+const express = require("express");
+const mongoose = require("mongoose");
+mongoose.set("strictQuery", true);
+const multer = require("multer");
+
+const app = express();
+
+const dotenv = require("dotenv");
+
+dotenv.config();
+
+const DB = process.env.DATABASE.replace(
+  "<PASSWORD>",
+  process.env.DATABASE_PASSWORD
+);
+
+mongoose
+  .connect(DB)
+  .then(() => console.log("DB connection successful!"))
+  .catch((err) => console.log(err.message));
+
+// Create a schema for the uploaded images
+const imageSchema = new mongoose.Schema({
+  fileName: String,
+  filePath: String,
+  fileType: String,
+});
+
+// Create a model for the uploaded images
+const Image = mongoose.model("Image", imageSchema);
+
+// Setup multer to handle file uploads
+const upload = multer({ dest: "uploads/" });
+
+// Create a route to handle file uploads
+app.post("/api/upload", upload.single("photo"), async (req, res, next) => {
+  const { filename: fileName, path: filePath, mimetype: fileType } = req.file;
+  console.log(req.file);
+  // Save the uploaded image to MongoDB
+  const image = new Image({
+    fileName,
+    filePath,
+    fileType,
+  });
+  await image.save();
+
+  // Return the image information to the frontend
+  res.json({ success: true, image });
+
+  next();
+});
+
+app.listen(8000, () => console.log("Server started on port 8000"));
+```
+
+==> Done Now go to the postman and select the right path with post req then go to body>form-data here give the key name in this case photo and select the file type and upload a image. then you will see in the database the product info has been saved and in the file system the photo will upload in a weird format
+
+== body parser do not write the file that's why in body we can not find file and we need multer package
+
+## Let's now actually configure the multer
+
+- 1.  given images a better filename
+- 2. allowing only image files to be uploaded on to our server
+
+Now we are going to create one multer storage and one multer filter and then we are going to use that storage and filter than create upload from there
